@@ -10,7 +10,7 @@ func main() {
 	procAttr := new(os.ProcAttr)
 	procAttr.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr}
 
-	cmd := exec.Command("/bin/bash", "-c", "stty -echo; /ssh")
+	cmd := exec.Command("stdnet", "www.google.com", "80")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
