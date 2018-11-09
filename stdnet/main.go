@@ -9,6 +9,14 @@ import (
 )
 
 func main() {
+	f, err := os.OpenFile("logFile", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	if err != nil {
+    log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+
+	log.SetOutput(f)
+
 	if len(os.Args) < 3 {
 		log.Fatal("Missing args.")
 	}
@@ -17,7 +25,7 @@ func main() {
 	remotePort := os.Args[2]
 	remoteAddr := fmt.Sprintf("%s:%s", remoteIP, remotePort)
 
-	log.Printf("Connecting to %s:%s", remoteIP, remotePort)
+	log.Printf("Connecting to %s", remoteAddr)
 
 	rAddr, err := net.ResolveTCPAddr("tcp", remoteAddr)
 	if err != nil {
@@ -48,7 +56,6 @@ func tcp_con_handle(con net.Conn) {
 
 // Performs copy operation between streams: os and tcp streams
 func stream_copy(src io.Reader, dst io.Writer) <-chan int {
-	buf := make([]byte, 1024)
 	sync_channel := make(chan int)
 	go func() {
 		defer func() {
@@ -58,21 +65,13 @@ func stream_copy(src io.Reader, dst io.Writer) <-chan int {
 			}
 			sync_channel <- 0 // Notify that processing is finished
 		}()
-		for {
-			var nBytes int
-			var err error
-			nBytes, err = src.Read(buf)
-			if err != nil {
-				if err != io.EOF {
-					log.Printf("Read error: %s\n", err)
-				}
-				break
-			}
-			_, err = dst.Write(buf[0:nBytes])
-			if err != nil {
-				log.Fatalf("Write error: %s\n", err)
-			}
-		}
+		piper, pipew := io.Pipe()
+		go func() {
+			defer pipew.Close()
+			io.Copy(pipew, src)
+		}()
+		io.Copy(dst, piper)
+		piper.Close()
 	}()
 	return sync_channel
 }
