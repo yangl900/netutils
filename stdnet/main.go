@@ -8,10 +8,24 @@ import (
 	"os"
 )
 
+func readByte(r io.Reader) (byte, error) {
+	buf := make([]byte, 1)
+
+	if n, err := r.Read(buf); n == 0 || err != nil {
+		if err != nil {
+			return 0, err
+		}
+
+		return 0, io.EOF
+	}
+
+	return buf[0], nil
+}
+
 func main() {
-	f, err := os.OpenFile("logFile", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	f, err := os.OpenFile("logFile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-    log.Fatalf("error opening file: %v", err)
+		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
 
@@ -21,11 +35,14 @@ func main() {
 		log.Fatal("Missing args.")
 	}
 
+	setConsoleRaw()
+	defer restoreConsole()
+
 	remoteIP := os.Args[1]
 	remotePort := os.Args[2]
 	remoteAddr := fmt.Sprintf("%s:%s", remoteIP, remotePort)
 
-	log.Printf("Connecting to %s", remoteAddr)
+	log.Printf("Connecting to %s:%s", remoteIP, remotePort)
 
 	rAddr, err := net.ResolveTCPAddr("tcp", remoteAddr)
 	if err != nil {
@@ -39,6 +56,16 @@ func main() {
 	defer rConn.Close()
 
 	tcp_con_handle(rConn)
+
+	// for {
+	// 	byte, err := readByte(os.Stdin)
+
+	// 	if err != nil {
+	// 		break
+	// 	}
+
+	// 	fmt.Println(string(byte))
+	// }
 }
 
 // Handles TC connection and perform synchorinization:
